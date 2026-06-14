@@ -87,6 +87,7 @@ class DiskPersistence(PersistenceBackend):
         if isinstance(raw.get("body"), str):
             raw["body"] = bytes.fromhex(raw["body"])
         msg = Message.from_dict(raw)
+        # Cache in memory but evict oldest if over limit
         self._in_memory[message_id] = msg
         return msg
 
@@ -98,6 +99,24 @@ class DiskPersistence(PersistenceBackend):
 
     async def list_all(self) -> list[Message]:
         return list(self._in_memory.values())
+
+    async def trim_memory(self, max_items: int = 10_000) -> int:
+        """Evict oldest items from in-memory cache to control memory usage.
+
+        Args:
+            max_items: Maximum number of items to retain in memory.
+
+        Returns:
+            Number of items evicted.
+        """
+        excess = len(self._in_memory) - max_items
+        if excess <= 0:
+            return 0
+        # Remove oldest entries (dicts preserve insertion order in Python 3.7+)
+        keys_to_evict = list(self._in_memory.keys())[:excess]
+        for key in keys_to_evict:
+            del self._in_memory[key]
+        return len(keys_to_evict)
 
     @property
     def count(self) -> int:
