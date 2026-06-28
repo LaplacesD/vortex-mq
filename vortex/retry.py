@@ -23,6 +23,21 @@ class RetryPolicy:
     backoff_factor: float = 2.0
     max_delay: float = 60.0
     jitter: bool = True
+    jitter_factor: float = 0.1  # +/-10% random jitter
+
+
+def _apply_jitter(delay: float, factor: float = 0.1) -> float:
+    """Apply random jitter to prevent thundering herd.
+
+    Args:
+        delay: Base delay in seconds.
+        factor: Jitter factor (0.1 = +/-10%).
+
+    Returns:
+        Jittered delay value.
+    """
+    import random
+    return delay * (1.0 + random.uniform(-factor, factor))
 
 
 @dataclass
